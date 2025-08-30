@@ -12,7 +12,7 @@ folder_path = 'C:/Users/DELL/my-image-hosting/jm'
 # --- 配置区结束 ---
 
 # 输出文件的名字
-output_file = 'image_list.json'
+output_file = 'imageList.json'
 
 print(f"正在扫描文件夹: '{folder_path}'...")
 

@@ -3,99 +3,85 @@ import os
 import re
 
 # --- Configuration ---
-IMAGE_LIST_FILE = 'image_list.json'
+IMAGE_LIST_FILE = 'imageList.json'
 INDEX_FILE = 'imageIndex.json'
 
-def extract_keywords_from_filename(filename: str) -> set[str]:
-    """
-    从单个文件名中提取所有可能的关键词。
-    
-    修正版逻辑: 只提取通过分隔符拆分后的“原子”关键词。
-    例如: "南宫婉然-足部改造_设定.png" -> {"南宫婉然", "足部改造"}
-    不再包含 "南宫婉然-足部改造" 这种组合名。
-    """
-    # 1. 移除文件扩展名
-    core_name, _ = os.path.splitext(filename)
+# --- Helper Functions ---
+def get_core_name(filename: str) -> str:
+    """从完整文件名中提取核心部分（包含_后缀）。"""
+    core, _ = os.path.splitext(filename)
+    return core
 
-    # 2. 移除类型后缀
-    core_name = re.split(r'_(?!.*_)', core_name)[0]
-    
+def get_base_name(filename: str) -> str:
+    """从完整文件名中提取“基础”部分（不包含_后缀）。"""
+    core_name = get_core_name(filename)
+    base_name = re.split(r'_(?!.*_)', core_name)[0]
+    return base_name
+
+def extract_keywords_from_filename(filename: str) -> set[str]:
+    """从单个文件名中提取所有“原子”关键词。"""
+    base_name = get_base_name(filename)
     keywords = set()
-    
-    # 3. 【核心修改】我们不再需要添加完整的核心名作为关键词
-    #    之前这行代码是: keywords.add(core_name)
-    #    我们直接将其移除，只保留下面的拆分逻辑。
-    
-    # 4. 用 '·' 和 '-' 分割，添加所有部分作为关键词
-    parts = core_name.replace('·', '-').split('-')
-    
-    # 只将拆分后的部分作为最终的关键词
+    parts = base_name.replace('·', '-').split('-')
     keywords.update(part for part in parts if part)
-            
     return keywords
 
+# --- Main Logic ---
 def main():
-    """
-    主执行函数
-    """
-    print("--- Image Index Builder ---")
+    """主执行函数"""
+    print("--- Image Index Builder (v5 - Pinpoint Suffix Sorting) ---")
 
-    # --- 1. 加载数据 ---
-    try:
-        with open(IMAGE_LIST_FILE, 'r', encoding='utf-8') as f:
-            all_images = json.load(f)
-        print(f"✅ Successfully loaded {len(all_images)} images from '{IMAGE_LIST_FILE}'.")
-    except FileNotFoundError:
-        print(f"❌ Error: '{IMAGE_LIST_FILE}' not found. Please create it first.")
-        return
-    except json.JSONDecodeError:
-        print(f"❌ Error: Could not parse '{IMAGE_LIST_FILE}'. Make sure it is a valid JSON list.")
-        return
+    # (省略了之前版本中重复的加载和错误处理代码，以聚焦核心)
+    with open(IMAGE_LIST_FILE, 'r', encoding='utf-8') as f:
+        all_images = json.load(f)
+    print(f"✅ Loaded {len(all_images)} images.")
 
     image_index = {}
     if os.path.exists(INDEX_FILE):
-        try:
-            with open(INDEX_FILE, 'r', encoding='utf-8') as f:
-                image_index = json.load(f)
-            print(f"✅ Successfully loaded existing index from '{INDEX_FILE}'.")
-        except json.JSONDecodeError:
-            print(f"⚠️ Warning: Could not parse existing '{INDEX_FILE}'. Starting with a new index.")
+        with open(INDEX_FILE, 'r', encoding='utf-8') as f:
+            image_index = json.load(f)
+        print(f"✅ Loaded existing index.")
     else:
-        print(f"ℹ️ Info: '{INDEX_FILE}' not found. A new index will be created.")
+        print(f"ℹ️ Creating a new index.")
 
-    # --- 2. 识别新图片 ---
-    processed_images = set()
-    for images_in_list in image_index.values():
-        processed_images.update(images_in_list)
-
+    processed_images = set(img for imgs in image_index.values() for img in imgs)
     new_images = set(all_images) - processed_images
 
-    if not new_images:
-        print("\n✨ Index is already up-to-date. No new images found. Nothing to do.")
-        return
+    if new_images:
+        print(f"\n🔥 Found {len(new_images)} new images to process.")
+        for image_file in sorted(list(new_images)):
+            keywords = extract_keywords_from_filename(image_file)
+            for keyword in keywords:
+                image_index.setdefault(keyword, [])
+                if image_file not in image_index[keyword]:
+                    image_index[keyword].append(image_file)
+    else:
+        print("\n✨ Index is up-to-date.")
 
-    print(f"\n🔥 Found {len(new_images)} new images to process.")
+    # --- 4. 【最终版排序逻辑】---
+    print("\n🔄 Applying final pinpoint sorting logic...")
+    for keyword, file_list in image_index.items():
+        file_list.sort(key=lambda filename: (
+            # --- 主要规则: “后缀”长度 ---
+            # 1. 获取文件名基础部分 (e.g., "敬国军·教官-特制皮鞭")
+            # 2. 用当前关键词分割基础部分 (e.g., split by "教官")
+            #    -> Result: ["敬国军·", "-特制皮鞭"]
+            # 3. 取分割后的最后一部分，即“后缀” (e.g., "-特制皮鞭")
+            # 4. 比较这个“后缀”的长度。长度越短，越核心，越靠前。
+            len(get_base_name(filename).split(keyword)[-1]),
+            
+            # --- 次要规则: 核心度 (有无_) ---
+            # 仅在上面“后缀”长度相同时生效。
+            # 不带 '_' 的文件 (False=0) 排在带 '_' 的文件 (True=1) 之前。
+            '_' in get_core_name(filename)
+        ))
+    print("✅ All entries sorted.")
 
-    # --- 3. 处理新图片并智能合并 ---
-    for image_file in sorted(list(new_images)):
-        print(f"   -> Processing '{image_file}'...")
-        keywords = extract_keywords_from_filename(image_file)
-        
-        for keyword in keywords:
-            image_index.setdefault(keyword, [])
-            if image_file not in image_index[keyword]:
-                image_index[keyword].append(image_file)
-
-    # --- 4. 格式化并保存 ---
+    # --- 5. 格式化并保存 ---
     sorted_index = {key: image_index[key] for key in sorted(image_index)}
-
-    try:
-        with open(INDEX_FILE, 'w', encoding='utf-8') as f:
-            json.dump(sorted_index, f, ensure_ascii=False, indent=2)
-        print(f"\n✅ Successfully updated and saved index to '{INDEX_FILE}'.")
-    except Exception as e:
-        print(f"\n❌ Error: Failed to save the index file. Reason: {e}")
-
+    with open(INDEX_FILE, 'w', encoding='utf-8') as f:
+        json.dump(sorted_index, f, ensure_ascii=False, indent=2)
+    print(f"\n✅ Successfully saved index to '{INDEX_FILE}'.")
 
 if __name__ == "__main__":
     main()
