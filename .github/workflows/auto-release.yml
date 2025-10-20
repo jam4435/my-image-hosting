@@ -1,0 +1,70 @@
+# 工作流名称
+name: Create Auto Release
+
+# 触发条件：当有代码推送到 main 分支时触发
+on:
+  push:
+    branches:
+      - main  # 你也可以改成你的主分支名，比如 master
+
+# 定义工作任务
+jobs:
+  build:
+    # 运行环境
+    runs-on: ubuntu-latest
+
+    # 任务步骤
+    steps:
+      # 步骤1: 检出代码
+      # 这是必须的，让工作流可以访问你的仓库代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          # 获取所有历史记录，以便能找到上一个tag
+          fetch-depth: 0 
+
+      # 步骤2: 自动递增版本号并创建新Tag
+      - name: Bump version and push tag
+        id: tag_version
+        run: |
+          # 获取最新的tag
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag is: $latest_tag"
+
+          # 解析版本号 (例如 v1.2.3 -> 1.2.3)
+          version_core=$(echo $latest_tag | sed 's/v//')
+          
+          # 分割主、次、修订版本号
+          major=$(echo $version_core | cut -d. -f1)
+          minor=$(echo $version_core | cut -d. -f2)
+          patch=$(echo $version_core | cut -d. -f3)
+
+          # 递增修订版本号
+          new_patch=$((patch + 1))
+          
+          # 构造新的版本号
+          new_version="v$major.$minor.$new_patch"
+          echo "New version is: $new_version"
+
+          # 将新版本号设置为输出变量，供后续步骤使用
+          echo "new_tag=$new_version" >> $GITHUB_OUTPUT
+          
+          # 创建并推送新的git tag
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag $new_version
+          git push origin $new_version
+
+      # 步骤3: 创建GitHub Release
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          # 使用上一步生成的tag作为Release的tag
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          # Release的标题
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          # 自动生成Release日志（基于commit信息）
+          generate_release_notes: true
+        env:
+          # 需要一个GitHub Token来授权创建Release
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
