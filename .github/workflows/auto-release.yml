@@ -81,6 +81,8 @@ jobs:
             "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@main/%E6%8F%92%E4%BB%B6/%E4%B8%96%E7%95%8C%E4%B9%A6plus/index.js"
             "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@main/%E6%8F%92%E4%BB%B6/%E4%B8%96%E7%95%8C%E4%B9%A6plus/index.js.map"
             "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@main/%E6%8F%92%E4%BB%B6/%E6%B5%8B%E8%AF%95/index.js"
+            "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@latest/%E6%8F%92%E4%BB%B6/%E4%B8%96%E7%95%8C%E4%B9%A6plus/index.js"
+            "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@latest/%E6%8F%92%E4%BB%B6/%E6%B5%8B%E8%AF%95/index.js"
           )
 
           for url in "${urls[@]}"; do
