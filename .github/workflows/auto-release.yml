@@ -73,3 +73,18 @@ jobs:
         env:
           # 需要一个GitHub Token来授权创建Release
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 步骤4: 主动清理 jsDelivr 对 branch URL 的缓存
+      - name: Purge jsDelivr cache
+        run: |
+          urls=(
+            "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@main/%E6%8F%92%E4%BB%B6/%E4%B8%96%E7%95%8C%E4%B9%A6plus/index.js"
+            "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@main/%E6%8F%92%E4%BB%B6/%E4%B8%96%E7%95%8C%E4%B9%A6plus/index.js.map"
+            "https://purge.jsdelivr.net/gh/jam4435/my-image-hosting@main/%E6%8F%92%E4%BB%B6/%E6%B5%8B%E8%AF%95/index.js"
+          )
+
+          for url in "${urls[@]}"; do
+            echo "Purging $url"
+            curl --retry 5 --retry-delay 2 --retry-all-errors -fsSL "$url"
+            echo
+          done
