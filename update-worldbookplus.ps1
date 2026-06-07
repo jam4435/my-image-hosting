@@ -65,14 +65,31 @@ function Invoke-External {
     }
 }
 
+function Get-BackupFilePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Directory
+    )
+
+    $datePrefix = Get-Date -Format 'M.d'
+    $defaultName = "${datePrefix}index.js"
+    $defaultPath = Join-Path $Directory $defaultName
+
+    if (-not (Test-Path -LiteralPath $defaultPath)) {
+        return $defaultPath
+    }
+
+    $fallbackName = "{0}-{1}index.js" -f $datePrefix, (Get-Date -Format 'HHmmss')
+    return (Join-Path $Directory $fallbackName)
+}
+
 $repoRoot = (Resolve-Path -LiteralPath $scriptRoot).Path
 $resolvedSource = (Resolve-Path -LiteralPath $SourcePath).Path
 $resolvedTargetDir = (Resolve-Path -LiteralPath $TargetDir).Path
 $targetFile = Join-Path $resolvedTargetDir 'index.js'
 $tempFile = Join-Path $resolvedTargetDir 'index.js.tmp'
-$timestamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
-$backupFile = Join-Path $resolvedTargetDir "${timestamp}-index.js"
-$commitMessage = "update worldbookplus $timestamp"
+$backupFile = Get-BackupFilePath -Directory $resolvedTargetDir
+$commitMessage = "update worldbookplus $(Get-Date -Format 'yyyy-MM-dd_HHmmss')"
 
 if (-not (Test-Path -LiteralPath $resolvedSource -PathType Leaf)) {
     throw "Source file not found: $resolvedSource"
