@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>图片分类审核工具</title>
+    <style>
+      :root {
+        --bg: #1a1a1a;
+        --bg-panel: #242424;
+        --bg-hover: #2e2e2e;
+        --text: #e0e0e0;
+        --text-dim: #999;
+        --accent: #4a9eff;
+        --accent-hover: #6bb5ff;
+        --th-color: #ff6b6b;
+        --tl-color: #51cf66;
+        --un-color: #ffd43b;
+        --border: #3a3a3a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* 顶部栏 */
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--bg-panel);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+      .topbar h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-right: 12px;
+        white-space: nowrap;
+      }
+      .tab-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-dim);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .tab-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text);
+      }
+      .tab-btn.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .tab-btn .count {
+        opacity: 0.7;
+        font-size: 12px;
+        margin-left: 4px;
+      }
+      .topbar .spacer {
+        flex: 1;
+      }
+      .icon-btn {
+        padding: 8px 14px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .icon-btn:hover {
+        background: var(--bg-hover);
+        border-color: var(--accent);
+      }
+
+      /* 主区域 */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        min-height: 0;
+        position: relative;
+      }
+      .filename {
+        font-size: 15px;
+        color: var(--text);
+        margin-bottom: 8px;
+        text-align: center;
+        word-break: break-all;
+        max-width: 90%;
+        min-height: 22px;
+      }
+      .img-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 0;
+        position: relative;
+      }
+      .img-wrap img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 4px;
+        background: #000;
+        will-change: transform, opacity;
+        transition: opacity 0.12s;
+      }
+      .img-wrap img.loading {
+        opacity: 0;
+      }
+      .progress {
+        font-size: 14px;
+        color: var(--text-dim);
+        margin-top: 8px;
+        min-height: 20px;
+      }
+
+      /* 底部控制 */
+      .controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border);
+        flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+      .nav-btn {
+        padding: 10px 22px;
+        border: none;
+        background: var(--bg-hover);
+        color: var(--text);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 15px;
+        transition: all 0.15s;
+      }
+      .nav-btn:hover {
+        background: #3a3a3a;
+      }
+      .nav-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .move-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        transition:
+          filter 0.15s,
+          transform 0.1s;
+      }
+      .move-btn:hover {
+        filter: brightness(1.12);
+      }
+      .move-btn:active {
+        transform: scale(0.97);
+      }
+      .move-btn.to-tl {
+        background: var(--tl-color);
+      }
+      .move-btn.to-th {
+        background: var(--th-color);
+      }
+      .move-btn.to-un {
+        background: var(--un-color);
+        color: #333;
+      }
+
+      /* 状态栏 */
+      .statusbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 16px;
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--text-dim);
+        flex-shrink: 0;
+      }
+
+      /* 空状态 */
+      .empty {
+        color: var(--text-dim);
+        font-size: 18px;
+        text-align: center;
+      }
+
+      /* 预加载隐藏 */
+      .preload {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        left: -9999px;
+        opacity: 0;
+      }
+
+      /* 提示 */
+      .toast {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 100;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.25s;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+
+      @media (max-width: 600px) {
+        .topbar h1 {
+          display: none;
+        }
+        .controls {
+          gap: 8px;
+        }
+        .nav-btn,
+        .move-btn {
+          padding: 9px 14px;
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>📷 图片分类审核</h1>
+      <button class="tab-btn" data-cat="text_heavy">文字≥40%<span class="count" id="cnt-th"></span></button>
+      <button class="tab-btn" data-cat="text_light">文字<40%<span class="count" id="cnt-tl"></span></button>
+      <button class="tab-btn" data-cat="unanalyzed">无法分析<span class="count" id="cnt-un"></span></button>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="btn-import">导入JSON</button>
+      <button class="icon-btn" id="btn-export">导出JSON</button>
+    </div>
+
+    <div class="main">
+      <div class="filename" id="filename"></div>
+      <div class="img-wrap" id="img-wrap">
+        <div class="empty" id="empty">请选择一个类别开始审核</div>
+        <img id="main-img" class="loading" style="display: none" alt="" />
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <div class="controls">
+      <button class="nav-btn" id="btn-prev">◀ 上一张</button>
+      <button class="move-btn" id="btn-move1"></button>
+      <button class="move-btn" id="btn-move2"></button>
+      <button class="nav-btn" id="btn-next">下一张 ▶</button>
+    </div>
+
+    <div class="statusbar">
+      <span id="stat-reviewed">已审核: 0</span>
+      <span id="stat-total">总计: 0</span>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <input type="file" id="file-input" accept=".json" style="display: none" />
+    <img class="preload" id="preload-prev" alt="" />
+    <img class="preload" id="preload-next" alt="" />
+
+    <script>
+      (function () {
+        'use strict';
+
+        // ===== 内嵌默认分类数据（首次加载后备） =====
+        let classification = { text_heavy: [], text_light: [], unanalyzed: [] };
+
+        const CAT_LABELS = {
+          text_heavy: '文字≥40%',
+          text_light: '文字<40%',
+          unanalyzed: '无法分析',
+        };
+        const CAT_COLORS = { text_heavy: 'th', text_light: 'tl', unanalyzed: 'un' };
+        const OTHER_CATS = {
+          text_heavy: ['text_light', 'unanalyzed'],
+          text_light: ['text_heavy', 'unanalyzed'],
+          unanalyzed: ['text_heavy', 'text_light'],
+        };
+
+        let currentCat = null;
+        let currentIndex = 0;
+        let reviewed = new Set(); // 记录已审核过的文件名
+
+        const $ = id => document.getElementById(id);
+        const imgEl = $('main-img');
+        const emptyEl = $('empty');
+        const filenameEl = $('filename');
+        const progressEl = $('progress');
+        const wrapEl = $('img-wrap');
+        const prePrev = $('preload-prev');
+        const preNext = $('preload-next');
+
+        // ===== 加载JSON =====
+        async function loadDefault() {
+          // 尝试 fetch 同目录文件
+          try {
+            const resp = await fetch('image_classification.json', { cache: 'no-store' });
+            if (resp.ok) {
+              classification = await resp.json();
+              normalize();
+              updateCounts();
+              showToast('已加载 image_classification.json');
+              return;
+            }
+          } catch (e) {
+            /* fetch 失败，使用空数据 */
+          }
+          normalize();
+          updateCounts();
+          showToast('未加载到JSON，请点击「导入JSON」');
+        }
+
+        function normalize() {
+          ['text_heavy', 'text_light', 'unanalyzed'].forEach(k => {
+            if (!Array.isArray(classification[k])) classification[k] = [];
+          });
+        }
+
+        // ===== UI 更新 =====
+        function updateCounts() {
+          $('cnt-th').textContent = `(${classification.text_heavy.length})`;
+          $('cnt-tl').textContent = `(${classification.text_light.length})`;
+          $('cnt-un').textContent = `(${classification.unanalyzed.length})`;
+          const total =
+            classification.text_heavy.length + classification.text_light.length + classification.unanalyzed.length;
+          $('stat-total').textContent = `总计: ${total}`;
+          $('stat-reviewed').textContent = `已审核: ${reviewed.size}`;
+        }
+
+        function selectCategory(cat) {
+          currentCat = cat;
+          currentIndex = 0;
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.cat === cat);
+          });
+          // 设置移动按钮
+          const others = OTHER_CATS[cat];
+          const m1 = $('btn-move1'),
+            m2 = $('btn-move2');
+          m1.textContent = `移到${CAT_LABELS[others[0]]}`;
+          m1.className = 'move-btn to-' + CAT_COLORS[others[0]];
+          m1.dataset.target = others[0];
+          m2.textContent = `移到${CAT_LABELS[others[1]]}`;
+          m2.className = 'move-btn to-' + CAT_COLORS[others[1]];
+          m2.dataset.target = others[1];
+          renderCurrent();
+        }
+
+        function renderCurrent() {
+          const list = classification[currentCat];
+          if (!list || list.length === 0) {
+            imgEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+            emptyEl.textContent = `「${CAT_LABELS[currentCat]}」类别下没有图片`;
+            filenameEl.textContent = '';
+            progressEl.textContent = '';
+            $('btn-prev').disabled = true;
+            $('btn-next').disabled = true;
+            $('btn-move1').disabled = true;
+            $('btn-move2').disabled = true;
+            return;
+          }
+          if (currentIndex >= list.length) currentIndex = list.length - 1;
+          if (currentIndex < 0) currentIndex = 0;
+          const name = list[currentIndex];
+          emptyEl.style.display = 'none';
+          imgEl.style.display = 'block';
+          imgEl.classList.add('loading');
+          imgEl.onload = () => imgEl.classList.remove('loading');
+          imgEl.onerror = () => {
+            imgEl.classList.remove('loading');
+          };
+          imgEl.src = encodeURIComponent(name);
+          filenameEl.textContent = name;
+          progressEl.textContent = `第 ${currentIndex + 1} / ${list.length} 张`;
+          $('btn-prev').disabled = currentIndex <= 0;
+          $('btn-next').disabled = currentIndex >= list.length - 1;
+          $('btn-move1').disabled = false;
+          $('btn-move2').disabled = false;
+          reviewed.add(name);
+          updateCounts();
+          preload();
+        }
+
+        function preload() {
+          const list = classification[currentCat];
+          if (currentIndex > 0) prePrev.src = encodeURIComponent(list[currentIndex - 1]);
+          if (currentIndex < list.length - 1) preNext.src = encodeURIComponent(list[currentIndex + 1]);
+        }
+
+        function moveNext() {
+          const list = classification[currentCat];
+          if (currentIndex < list.length - 1) {
+            currentIndex++;
+            renderCurrent();
+          }
+        }
+        function movePrev() {
+          if (currentIndex > 0) {
+            currentIndex--;
+            renderCurrent();
+          }
+        }
+
+        function moveTo(targetCat) {
+          const list = classification[currentCat];
+          if (!list.length) return;
+          const name = list[currentIndex];
+          // 从当前类别移除
+          list.splice(currentIndex, 1);
+          // 添加到目标类别
+          classification[targetCat].push(name);
+          showToast(`已将「${name}」移到${CAT_LABELS[targetCat]}`);
+          updateCounts();
+          // 调整索引并渲染
+          if (currentIndex >= list.length) currentIndex = Math.max(0, list.length - 1);
+          renderCurrent();
+        }
+
+        // ===== 导出 =====
+        function exportJSON() {
+          const data = JSON.stringify(classification, null, 2);
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'image_classification.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast('已导出 image_classification.json');
+        }
+
+        // ===== 导入 =====
+        function importJSON(file) {
+          const reader = new FileReader();
+          reader.onload = e => {
+            try {
+              const obj = JSON.parse(e.target.result);
+              if (!obj.text_heavy || !obj.text_light || !obj.unanalyzed) {
+                throw new Error('格式不正确');
+              }
+              classification = obj;
+              normalize();
+              updateCounts();
+              if (currentCat) renderCurrent();
+              showToast('导入成功');
+            } catch (err) {
+              showToast('导入失败: ' + err.message);
+            }
+          };
+          reader.readAsText(file, 'utf-8');
+        }
+
+        // ===== Toast =====
+        let toastTimer = null;
+        function showToast(msg) {
+          const t = $('toast');
+          t.textContent = msg;
+          t.classList.add('show');
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // ===== 事件绑定 =====
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.addEventListener('click', () => selectCategory(b.dataset.cat));
+        });
+        $('btn-prev').addEventListener('click', movePrev);
+        $('btn-next').addEventListener('click', moveNext);
+        $('btn-move1').addEventListener('click', () => moveTo($('btn-move1').dataset.target));
+        $('btn-move2').addEventListener('click', () => moveTo($('btn-move2').dataset.target));
+        $('btn-export').addEventListener('click', exportJSON);
+        $('btn-import').addEventListener('click', () => $('file-input').click());
+        $('file-input').addEventListener('change', e => {
+          if (e.target.files[0]) importJSON(e.target.files[0]);
+          e.target.value = '';
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', e => {
+          if (!currentCat) return;
+          if (e.target.tagName === 'INPUT') return;
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            movePrev();
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            moveNext();
+          } else if (e.key === '1') {
+            if (!$('btn-move1').disabled) moveTo($('btn-move1').dataset.target);
+          } else if (e.key === '2') {
+            if (!$('btn-move2').disabled) moveTo($('btn-move2').dataset.target);
+          }
+        });
+
+        // 启动
+        loadDefault().then(() => {
+          // 默认选择第一个类别
+          selectCategory('text_heavy');
+        });
+      })();
+    </script>
+  </body>
+</html>
